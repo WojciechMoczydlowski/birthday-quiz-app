@@ -2,9 +2,12 @@
   "name": "quiz-manager",
   "version": "1.0.0",
   "description": "Live quiz manager for party",
+  "homepage": "https://pbrw.github.io/birthday-quiz-app",
   "scripts": {
     "build": "webpack --mode production",
-    "dev": "webpack serve --mode development --open"
+    "dev": "webpack serve --mode development --open",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
