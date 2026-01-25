@@ -60,7 +60,7 @@ const initialQuestions: Question[] = [
   },
   {
     id: 2,
-    text: 'W jakim kraju nigdy nie byłem? Rosja, Armenia, Mołdawia, USA',
+    text: 'W jakim kraju nigdy nie byłem?',
     category: 'Pytania ogólne',
     answers: [
       { text: 'Rosja', isCorrect: false },
@@ -185,7 +185,7 @@ const initialQuestions: Question[] = [
   },
   {
     id: 13,
-    text: 'Z jakiej atrakcji mojego biura najczęściej korzystam? Nap room, siłownia, ping-pong, Kawiarnia',
+    text: 'Z jakiej atrakcji mojego biura najczęściej korzystam?',
     category: 'Nauka, studia, praca',
     answers: [
       { text: 'Siłownia', isCorrect: false },
@@ -330,83 +330,6 @@ const initialQuestions: Question[] = [
       { text: 'Zdałem prawo jazdy za drugim razem', isCorrect: false },
     ],
   },
-  // {
-  //   id: 26,
-  //   text: 'Które zdanie jest fałszywe?',
-  //   category: 'Pytania Combo',
-  //   answers: [
-  //     { text: 'Mam zielone frisbee', isCorrect: false },
-  //     { text: 'Wzruszam się oglądając skróty meczów piłki nożnej', isCorrect: false },
-  //     { text: 'Chciałem kiedyś mieć tatuaż ze słowem "truth"', isCorrect: true },
-  //     { text: 'Moja osiemnastka była słaba', isCorrect: false },
-  //   ],
-  // },
-  // {
-  //   id: 27,
-  //   text: 'Które zdanie jest fałszywe?',
-  //   category: 'Pytania Combo',
-  //   answers: [
-  //     { text: 'Maciek Oborski był pierwszą osobą, z którą się zakumplowałem w Studni', isCorrect: false },
-  //     { text: 'Napisałem maturę podstawową z matematyki na 90%', isCorrect: true },
-  //     { text: 'Uczyłem się kiedyś grać na gitarze', isCorrect: false },
-  //     { text: 'Grałem kiedyś w pokera na pieniądze', isCorrect: false },
-  //   ],
-  // },
-  // {
-  //   id: 28,
-  //   text: 'Które zdanie jest fałszywe?',
-  //   category: 'Pytania Combo',
-  //   answers: [
-  //     { text: 'Zniszczyłem dwie rakiety do squasha jak do tej pory', isCorrect: false },
-  //     { text: 'Wszedłem na medyczną konferencję w Varso Tower, bo ludzie myśleli, że jestem przedstawicielem Google', isCorrect: false },
-  //     { text: 'Policja mnie spisała, gdy grałem we flanki na mieście', isCorrect: true },
-  //     { text: 'Jakiś typ mnie owalił za gadanie na mszy na Służewie', isCorrect: false },
-  //   ],
-  // },
-  // {
-  //   id: 29,
-  //   text: 'Które zdanie jest prawidziwe?',
-  //   category: 'Pytania Combo',
-  //   answers: [
-  //     { text: 'Sushi jest spoko', isCorrect: false },
-  //     { text: 'Kolendra jest spoko', isCorrect: false },
-  //     { text: 'Imbir jest spoko', isCorrect: false },
-  //     { text: 'Oliwki są spoko', isCorrect: true },
-  //   ],
-  // },
-  // {
-  //   id: 30,
-  //   text: 'Które zdanie jest prawidziwe?',
-  //   category: 'Pytania Combo',
-  //   answers: [
-  //     { text: 'Mam 196 cm wzrostu', isCorrect: false },
-  //     { text: 'Zjechałem z Górki Szczęśliwickiej na nartach', isCorrect: true },
-  //     { text: 'Lubiłem język polski w liceum', isCorrect: false },
-  //     { text: 'Nigdy nie miałem papierosa w ustach', isCorrect: false },
-  //   ],
-  // },
-  // {
-  //   id: 31,
-  //   text: 'Które zdanie jest prawidziwe?',
-  //   category: 'Pytania Combo',
-  //   answers: [
-  //     { text: 'Byłem 3 razy na studniówce', isCorrect: true },
-  //     { text: 'Mój ulubiony obowiązek domowy to sprzątanie łazienki', isCorrect: false },
-  //     { text: 'Nigdy nie grałem w padla', isCorrect: false },
-  //     { text: 'Na pierwszym roku mieszkałem przy ulicy Dickensa', isCorrect: false },
-  //   ],
-  // },
-  // {
-  //   id: 32,
-  //   text: 'Której książki nie przeczytałem?',
-  //   category: 'Pytania ogólne',
-  //   answers: [
-  //     { text: 'Sztuka Kochania - M. Wisłocka', isCorrect: false },
-  //     { text: 'Wszystko za życie - J. Krakauer', isCorrect: true },
-  //     { text: 'Nieznośna Lekkość Bytu - M. Kundera', isCorrect: false },
-  //     { text: 'Bóg urojony - R. Dawkins', isCorrect: false },
-  //   ],
-  // }
 ];
 
 function App() {
@@ -458,46 +381,60 @@ function App() {
     if (answeredQuestions.has(questionId)) {
       return; // Already answered
     }
-    let nextTeam1Series = [...team1Series];
-    let nextTeam2Series = [...team2Series];
     setAnsweredQuestions(new Set([...answeredQuestions, questionId]));
-    if (currentTeam === 'team1') {
-      // setTeam1Series((prev) => [...prev, isCorrect])
-      nextTeam1Series.push(isCorrect);
-    } else {
-      // setTeam2Series((prev) => [...prev, isCorrect])
-      // nextTeam2Series = [...team2Series, isCorrect];
-      nextTeam2Series.push(isCorrect);    
-    }
 
-    const answeredTotal = nextTeam1Series.length + nextTeam2Series.length;
-    let nextBreak = 2 * SET_LENGTH;
-    if (answeredTotal > 2 * SET_LENGTH) {
-      nextBreak = answeredTotal % 2 === 1 ? answeredTotal + 1 : answeredTotal;
-    }
-    nextBreak /= 2;
-    const team1Left = nextBreak - nextTeam1Series.length;
-    const team2Left = nextBreak - nextTeam2Series.length;
+    
+    // More complex scoring system based on sets and "penalty-like best of N rounds"
+    // The goal was to make game more balanced but it's not needed free play
+    
+    // let nextTeam1Series = [...team1Series];
+    // let nextTeam2Series = [...team2Series];
+    // if (currentTeam === 'team1') {
+    //   nextTeam1Series.push(isCorrect);
+    // } else {
+    //   nextTeam2Series.push(isCorrect);    
+    // }
+
+    // const answeredTotal = nextTeam1Series.length + nextTeam2Series.length;
+    // let nextBreak = 2 * SET_LENGTH;
+    // if (answeredTotal > 2 * SET_LENGTH) {
+    //   nextBreak = answeredTotal % 2 === 1 ? answeredTotal + 1 : answeredTotal;
+    // }
+    // nextBreak /= 2;
+    // const team1Left = nextBreak - nextTeam1Series.length;
+    // const team2Left = nextBreak - nextTeam2Series.length;
 
   
-    if (countTrue(nextTeam1Series) > countTrue(nextTeam2Series) + team2Left) {
-      setTeam1Score((prev) => prev + 1);
-      setTeam1Series([])
-      setTeam2Series([])
-      setCurrentTeam((prev) => ((team1Score + team2Score + 1) % 2 === 0 ? 'team1' : 'team2'));
-      return;
-    }
+    // if (countTrue(nextTeam1Series) > countTrue(nextTeam2Series) + team2Left) {
+    //   setTeam1Score((prev) => prev + 1);
+    //   setTeam1Series([])
+    //   setTeam2Series([])
+    //   setCurrentTeam((prev) => ((team1Score + team2Score + 1) % 2 === 0 ? 'team1' : 'team2'));
+    //   return;
+    // }
 
-    if (countTrue(nextTeam2Series) > countTrue(nextTeam1Series) + team1Left) {
-      setTeam2Score((prev) => prev + 1);
-      setTeam2Series([])
-      setTeam1Series([])
-      setCurrentTeam((prev) => ((team1Score + team2Score + 1) % 2 === 0 ? 'team1' : 'team2'));
-      return;
+    // if (countTrue(nextTeam2Series) > countTrue(nextTeam1Series) + team1Left) {
+    //   setTeam2Score((prev) => prev + 1);
+    //   setTeam2Series([])
+    //   setTeam1Series([])
+    //   setCurrentTeam((prev) => ((team1Score + team2Score + 1) % 2 === 0 ? 'team1' : 'team2'));
+    //   return;
+    // }
+    // setTeam1Series(nextTeam1Series);
+    // setTeam2Series(nextTeam2Series);
+    
+   
+    // If you want to use a complex scoring system you need to comment this scoring part (without switching teams)
+    if (currentTeam === 'team1') {
+      if (isCorrect) {
+        setTeam1Score((prev) => prev + 1);
+      }
+    } else {
+      if (isCorrect) {
+        setTeam2Score((prev) => prev + 1);
+      }
     }
-
-    setTeam1Series(nextTeam1Series);
-    setTeam2Series(nextTeam2Series);
+    
     switchTeam();
   };
 
