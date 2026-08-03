@@ -36,9 +36,6 @@ export const getCategoryColor = (
   category: string,
   categories: string[]
 ): CategoryColor => {
-  if (namedColors[category]) {
-    return namedColors[category];
-  }
   const idx = categories.indexOf(category);
   if (idx >= 0) {
     return palette[idx % palette.length];
