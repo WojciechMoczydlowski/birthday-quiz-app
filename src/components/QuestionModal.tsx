@@ -74,7 +74,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }
     return 'inherit';
   };
-  const letters = ['A', 'B', 'C', 'D'];
+  const letter = (index: number) => String.fromCharCode(65 + index);
   return (
     <Modal
       open={true}
@@ -137,7 +137,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                   },
                 }}
               >
-                {letters[index] + ') ' + answer.text}
+                {letter(index) + ') ' + answer.text}
               </Button>
             </Grid>
           ))}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Paper, Typography, Grid, IconButton, ButtonGroup, Chip, Button, Stack, Avatar } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Paper, Typography, Grid, IconButton, ButtonGroup, Chip, Button, Stack, Avatar, TextField } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -7,6 +7,7 @@ import PenaltyShootout from './PenaltyTracker';
 import { green, red, grey } from '@mui/material/colors';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
 
 interface DashboardProps {
   team1Score: number;
@@ -17,6 +18,10 @@ interface DashboardProps {
   team2Series: boolean[];
   currentTeam: 'team1' | 'team2';
   onResetGame: () => void;
+  team1Name: string;
+  team2Name: string;
+  onTeam1NameChange: (name: string) => void;
+  onTeam2NameChange: (name: string) => void;
 }
 
 type ShotStatus = 'goal' | 'miss' | null;
@@ -59,9 +64,106 @@ const Dashboard: React.FC<DashboardProps> = ({
   team2Series,
   currentTeam,
   onResetGame,
+  team1Name,
+  team2Name,
+  onTeam1NameChange,
+  onTeam2NameChange,
 }) => {
   const team1ShotStatuses = team1Series.map((value, _) => value === true ? 'goal' : 'miss');
   const team2ShotStatuses = team2Series.map((value, _) => value === true ? 'goal' : 'miss');
+
+  const [editingTeam, setEditingTeam] = useState<'team1' | 'team2' | null>(null);
+  const [draftName, setDraftName] = useState('');
+
+  const startEdit = (team: 'team1' | 'team2', currentName: string) => {
+    setEditingTeam(team);
+    setDraftName(currentName);
+  };
+
+  const cancelEdit = () => setEditingTeam(null);
+
+  const commitEdit = (onChange: (name: string) => void) => {
+    const trimmed = draftName.trim();
+    if (trimmed) {
+      onChange(trimmed);
+    }
+    setEditingTeam(null);
+  };
+
+  const renderTeamName = (
+    team: 'team1' | 'team2',
+    name: string,
+    color: string,
+    onChange: (name: string) => void
+  ) => (
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 0.5,
+        mb: 1,
+        minHeight: 40,
+      }}
+    >
+      {editingTeam === team ? (
+        <>
+          <TextField
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitEdit(onChange);
+              if (e.key === 'Escape') cancelEdit();
+            }}
+            autoFocus
+            variant="standard"
+            inputProps={{ 'aria-label': 'Nazwa drużyny', maxLength: 40 }}
+            sx={{
+              '& .MuiInputBase-input': {
+                color,
+                fontWeight: 'bold',
+                textAlign: 'center',
+                fontSize: '1.5rem',
+              },
+              '& .MuiInput-underline:before': { borderBottomColor: color },
+              '& .MuiInput-underline:after': { borderBottomColor: color },
+            }}
+          />
+          <IconButton
+            size="small"
+            onClick={() => commitEdit(onChange)}
+            sx={{ color }}
+            aria-label="Zapisz nazwę drużyny"
+          >
+            <CheckIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={cancelEdit}
+            sx={{ color }}
+            aria-label="Anuluj edycję nazwy"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </>
+      ) : (
+        <>
+          <Typography variant="h5" sx={{ color, fontWeight: 'bold' }}>
+            {name}
+          </Typography>
+          <IconButton
+            size="small"
+            onClick={() => startEdit(team, name)}
+            sx={{ color }}
+            aria-label="Edytuj nazwę drużyny"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </>
+      )}
+    </Box>
+  );
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
@@ -77,11 +179,12 @@ const Dashboard: React.FC<DashboardProps> = ({
       </Box>
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2}}>
         <Chip 
-          label={`Pytanie dla: ${currentTeam !== 'team1' ? 'Team Ewela' : 'Team Kasia'}`} 
+          label={`Pytanie dla: ${currentTeam !== 'team1' ? team2Name : team1Name}`} 
           color="default" 
           sx={{ 
-            backgroundColor: currentTeam === 'team1' ? '#ff9436' : '#800080',
-            color: 'white',
+            backgroundColor: currentTeam === 'team1' ? '#81d4fa' : '#a5d6a7',
+            color: currentTeam === 'team1' ? '#01579b' : '#1b5e20',
+            border: '2px solid #ff9800',
             fontSize: '1rem',
             fontWeight: 600,
           }} 
@@ -94,16 +197,14 @@ const Dashboard: React.FC<DashboardProps> = ({
           sx={{
             p: 3,
             textAlign: 'center',
-            backgroundColor: '#FFA64D',
-            color: '#1565c0',
-            border: currentTeam === 'team1' ? '3px solid #ffff00' : 'none',
+            backgroundColor: '#81d4fa',
+            color: '#01579b',
+            border: currentTeam === 'team1' ? '4px solid #ff9800' : '4px solid transparent',
             boxShadow: currentTeam === 'team1' ? 6 : 3,
           }}
         >
-          <Typography variant="h5" gutterBottom sx={{ color: 'white', fontWeight: 'bold' }}>
-            Team Kasia
-          </Typography>
-          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: 'white' }}>
+          {renderTeamName('team1', team1Name, '#01579b', onTeam1NameChange)}
+          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: '#01579b' }}>
             {team1Score}
           </Typography>
           <Stack direction="row" spacing={1.5} justifyContent="center" alignItems="center">
@@ -133,16 +234,14 @@ const Dashboard: React.FC<DashboardProps> = ({
           sx={{
             p: 3,
             textAlign: 'center',
-            backgroundColor: '#A040A0',
-            color: '#c62828',
-            border: currentTeam === 'team2' ? '3px solid #ffff00' : 'none',
+            backgroundColor: '#a5d6a7',
+            color: '#1b5e20',
+            border: currentTeam === 'team2' ? '4px solid #ff9800' : '4px solid transparent',
             boxShadow: currentTeam === 'team2' ? 6 : 3,
           }}
         >
-          <Typography variant="h5" gutterBottom sx={{ color: 'white', fontWeight: 'bold' }}>
-            Team Ewela
-          </Typography>
-          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: 'white' }}>
+          {renderTeamName('team2', team2Name, '#1b5e20', onTeam2NameChange)}
+          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: '#1b5e20' }}>
             {team2Score}
           </Typography>
           <Stack direction="row" spacing={1.5} justifyContent="center" alignItems="center">

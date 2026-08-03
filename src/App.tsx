@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Box, Typography } from '@mui/material';
+import { Container, Box, Typography, Button } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
 import Dashboard from './components/Dashboard';
 import QuestionList from './components/QuestionList';
 import QuestionModal from './components/QuestionModal';
+import ManageContentModal from './components/ManageContentModal';
 import { Question } from './types';
 
 const STORAGE_KEY = 'quiz-manager-state';
+const CONTENT_KEY = 'quiz-manager-content';
 const SET_LENGTH = 3;
 
 interface SavedState {
@@ -15,7 +18,12 @@ interface SavedState {
   team2Series: boolean[];
   answeredQuestions: number[];
   currentTeam: 'team1' | 'team2';
+  team1Name?: string;
+  team2Name?: string;
 }
+
+const DEFAULT_TEAM1_NAME = 'Team Kasia';
+const DEFAULT_TEAM2_NAME = 'Team Ewela';
 
 const loadState = (): SavedState | null => {
   try {
@@ -37,7 +45,9 @@ const saveState = (state: SavedState) => {
   }
 };
 
-const categories = [
+// These are only used to seed the app the first time it runs. After that,
+// categories and questions live in localStorage and are managed from the UI.
+const defaultCategories = [
   'Pytania ogólne',
   'Kobiety i związki',
   'Nauka, studia, praca',
@@ -45,7 +55,7 @@ const categories = [
   'Pytania Combo',
 ];
 
-const initialQuestions: Question[] = [
+const defaultQuestions: Question[] = [
   // General Knowledge (5)
   {
     id: 1,
@@ -332,6 +342,38 @@ const initialQuestions: Question[] = [
   },
 ];
 
+interface SavedContent {
+  categories: string[];
+  questions: Question[];
+}
+
+const loadContent = (): SavedContent => {
+  try {
+    const saved = localStorage.getItem(CONTENT_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (
+        parsed &&
+        Array.isArray(parsed.categories) &&
+        Array.isArray(parsed.questions)
+      ) {
+        return { categories: parsed.categories, questions: parsed.questions };
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load content from localStorage:', error);
+  }
+  return { categories: defaultCategories, questions: defaultQuestions };
+};
+
+const saveContent = (content: SavedContent) => {
+  try {
+    localStorage.setItem(CONTENT_KEY, JSON.stringify(content));
+  } catch (error) {
+    console.error('Failed to save content to localStorage:', error);
+  }
+};
+
 function App() {
   // Load initial state from localStorage
   const savedState = loadState();
@@ -350,6 +392,19 @@ function App() {
   const [currentTeam, setCurrentTeam] = useState<'team1' | 'team2'>(
     savedState?.currentTeam ?? 'team1'
   );
+  const [team1Name, setTeam1Name] = useState<string>(
+    savedState?.team1Name ?? DEFAULT_TEAM1_NAME
+  );
+  const [team2Name, setTeam2Name] = useState<string>(
+    savedState?.team2Name ?? DEFAULT_TEAM2_NAME
+  );
+
+  // Quiz content (categories + questions) is now editable from the UI and
+  // persisted separately from the game state.
+  const savedContent = loadContent();
+  const [categories, setCategories] = useState<string[]>(savedContent.categories);
+  const [questions, setQuestions] = useState<Question[]>(savedContent.questions);
+  const [manageOpen, setManageOpen] = useState(false);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -360,8 +415,64 @@ function App() {
       team2Series: Array.from(team2Series),
       answeredQuestions: Array.from(answeredQuestions),
       currentTeam,
+      team1Name,
+      team2Name,
     });
-  }, [team1Score, team2Score, answeredQuestions, currentTeam]);
+  }, [team1Score, team2Score, answeredQuestions, currentTeam, team1Name, team2Name]);
+
+  // Persist quiz content whenever categories or questions change.
+  useEffect(() => {
+    saveContent({ categories, questions });
+  }, [categories, questions]);
+
+  // ---- Content management handlers ----
+  const handleAddCategory = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || categories.includes(trimmed)) {
+      return;
+    }
+    setCategories((prev) => [...prev, trimmed]);
+  };
+
+  const handleDeleteCategory = (name: string) => {
+    const removedIds = questions
+      .filter((q) => q.category === name)
+      .map((q) => q.id);
+    setQuestions((prev) => prev.filter((q) => q.category !== name));
+    setCategories((prev) => prev.filter((c) => c !== name));
+    if (removedIds.length > 0) {
+      setAnsweredQuestions((prev) => {
+        const next = new Set(prev);
+        removedIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+  };
+
+  const handleAddQuestion = (question: Omit<Question, 'id'>) => {
+    const newId =
+      questions.reduce((max, cur) => Math.max(max, cur.id), 0) + 1;
+    setQuestions((prev) => [...prev, { ...question, id: newId }]);
+  };
+
+  const handleUpdateQuestion = (updated: Question) => {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === updated.id ? updated : q))
+    );
+    setSelectedQuestion((prev) =>
+      prev && prev.id === updated.id ? updated : prev
+    );
+  };
+
+  const handleDeleteQuestion = (id: number) => {
+    setQuestions((prev) => prev.filter((q) => q.id !== id));
+    setAnsweredQuestions((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setSelectedQuestion((prev) => (prev && prev.id === id ? null : prev));
+  };
 
   const switchTeam = () => {
     setCurrentTeam((prev) => (prev === 'team1' ? 'team2' : 'team1'));
@@ -470,12 +581,26 @@ function App() {
         team2Series={team2Series}
         currentTeam={currentTeam}
         onResetGame={handleResetGame}
+        team1Name={team1Name}
+        team2Name={team2Name}
+        onTeam1NameChange={setTeam1Name}
+        onTeam2NameChange={setTeam2Name}
       />
       
-      <Box sx={{ mt: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4, mb: 1 }}>
+        <Button
+          variant="outlined"
+          startIcon={<EditIcon />}
+          onClick={() => setManageOpen(true)}
+        >
+          Zarządzaj pytaniami
+        </Button>
+      </Box>
+
+      <Box sx={{ mt: 1 }}>
         <QuestionList
-          questions={initialQuestions}
-        categories={categories}
+          questions={questions}
+          categories={categories}
           onQuestionClick={handleQuestionClick}
           answeredQuestions={answeredQuestions}
         />
@@ -490,6 +615,18 @@ function App() {
           currentTeam={currentTeam}
         />
       )}
+
+      <ManageContentModal
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        categories={categories}
+        questions={questions}
+        onAddCategory={handleAddCategory}
+        onDeleteCategory={handleDeleteCategory}
+        onAddQuestion={handleAddQuestion}
+        onUpdateQuestion={handleUpdateQuestion}
+        onDeleteQuestion={handleDeleteQuestion}
+      />
     </Container>
   );
 }

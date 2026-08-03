@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Button, Typography, Grid, Divider } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { Question } from '../types';
+import { getCategoryColor } from '../categoryColors';
 
 interface QuestionListProps {
   questions: Question[];
@@ -9,34 +10,6 @@ interface QuestionListProps {
   onQuestionClick: (question: Question) => void;
   answeredQuestions: Set<number>;
 }
-
-const categoryColors: Record<string, { main: string; light: string; dark: string }> = {
-  'Pytania ogólne': {
-    main: '#ffd54f',
-    light: '#fff9c4',
-    dark: '#ffc107',
-  },
-  'Kobiety i związki': {
-    main: '#4db6ac',
-    light: '#b2dfdb',
-    dark: '#26a69a',
-  },
-  'Nauka, studia, praca': {
-    main: '#64b5f6',
-    light: '#bbdefb',
-    dark: '#42a5f5',
-  },
-  'Studnia': {
-    main: '#f06292',
-    light: '#f8bbd0',
-    dark: '#ec407a',
-  },
-  'Pytania Combo': {
-    main: '#a1887f', // Brown 300
-    light: '#d7ccc8', // Brown 100
-    dark: '#795548', // Brown 500
-  },
-};
 
 const QuestionList: React.FC<QuestionListProps> = ({
   questions,
@@ -62,7 +35,7 @@ const QuestionList: React.FC<QuestionListProps> = ({
           <Grid container spacing={1}>
             {catQuestions.map((question, index) => {
               const isAnswered = answeredQuestions.has(question.id);
-              const colors = categoryColors[category] || { main: '#757575', light: '#9e9e9e', dark: '#616161' };
+              const colors = getCategoryColor(category, categories);
               return (
                 <Grid item xs={6} sm={4} md={2} lg={2} key={question.id}>
                   <Button
