@@ -33,6 +33,7 @@ module.exports = {
       directory: path.join(__dirname, 'dist'),
     },
     compress: true,
-    port: 3000,
+    host: '0.0.0.0',
+    port: 8080,
   },
 };
