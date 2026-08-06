@@ -9,23 +9,34 @@ import { Question } from './types';
 
 const STORAGE_KEY = 'quiz-manager-state';
 const CONTENT_KEY = 'quiz-manager-content';
-const SET_LENGTH = 3;
 
-interface SavedState {
-  team1Score: number;
-  team2Score: number;
-  team1Series: boolean[];
-  team2Series: boolean[];
-  answeredQuestions: number[];
-  currentTeam: 'team1' | 'team2';
-  team1Name?: string;
-  team2Name?: string;
+// Number of competing teams. Change this to add/remove teams; the dashboard and
+// all game logic adapt automatically.
+const NUM_TEAMS = 3;
+
+// Default team names, used the first time the app runs (each is editable in UI).
+const DEFAULT_TEAM_NAMES = ['Team Kasia', 'Team Ewela', 'Team 3'];
+
+export interface TeamState {
+  name: string;
+  score: number;
+  series: boolean[];
 }
 
-const DEFAULT_TEAM1_NAME = 'Team Kasia';
-const DEFAULT_TEAM2_NAME = 'Team Ewela';
+interface SavedState {
+  teams: TeamState[];
+  answeredQuestions: number[];
+  currentTeamIndex: number;
+}
 
-const loadState = (): SavedState | null => {
+const makeDefaultTeams = (): TeamState[] =>
+  Array.from({ length: NUM_TEAMS }, (_, i) => ({
+    name: DEFAULT_TEAM_NAMES[i] ?? `Team ${i + 1}`,
+    score: 0,
+    series: [],
+  }));
+
+const loadState = (): any => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -35,6 +46,41 @@ const loadState = (): SavedState | null => {
     console.error('Failed to load state from localStorage:', error);
   }
   return null;
+};
+
+// Builds the initial teams array, seeding from saved state when present. Handles
+// both the current array format and the older team1*/team2* format so existing
+// saves aren't lost, and gracefully grows/shrinks to NUM_TEAMS.
+const initTeams = (saved: any): TeamState[] => {
+  const teams = makeDefaultTeams();
+  if (!saved) return teams;
+
+  if (Array.isArray(saved.teams)) {
+    saved.teams.slice(0, NUM_TEAMS).forEach((t: Partial<TeamState>, i: number) => {
+      teams[i] = {
+        name: t?.name ?? teams[i].name,
+        score: typeof t?.score === 'number' ? t.score : 0,
+        series: Array.isArray(t?.series) ? t!.series! : [],
+      };
+    });
+  } else {
+    // Legacy two-team format.
+    if (typeof saved.team1Name === 'string') teams[0].name = saved.team1Name;
+    if (typeof saved.team1Score === 'number') teams[0].score = saved.team1Score;
+    if (teams[1] && typeof saved.team2Name === 'string') teams[1].name = saved.team2Name;
+    if (teams[1] && typeof saved.team2Score === 'number') teams[1].score = saved.team2Score;
+  }
+  return teams;
+};
+
+const initCurrentTeamIndex = (saved: any): number => {
+  if (saved) {
+    if (typeof saved.currentTeamIndex === 'number') {
+      return Math.min(Math.max(0, saved.currentTeamIndex), NUM_TEAMS - 1);
+    }
+    if (saved.currentTeam === 'team2') return Math.min(1, NUM_TEAMS - 1); // legacy
+  }
+  return 0;
 };
 
 const saveState = (state: SavedState) => {
@@ -377,26 +423,13 @@ const saveContent = (content: SavedContent) => {
 function App() {
   // Load initial state from localStorage
   const savedState = loadState();
-  const [team1Score, setTeam1Score] = useState(savedState?.team1Score ?? 0);
-  const [team2Score, setTeam2Score] = useState(savedState?.team2Score ?? 0);
-  const [team1Series, setTeam1Series] = useState<Array<boolean>>(
-    savedState?.team1Series ?? []
-  );
-  const [team2Series, setTeam2Series] = useState<Array<boolean>>(
-    savedState?.team1Series ?? []
-  );
+  const [teams, setTeams] = useState<TeamState[]>(() => initTeams(savedState));
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<number>>(
     new Set(savedState?.answeredQuestions ?? [])
   );
-  const [currentTeam, setCurrentTeam] = useState<'team1' | 'team2'>(
-    savedState?.currentTeam ?? 'team1'
-  );
-  const [team1Name, setTeam1Name] = useState<string>(
-    savedState?.team1Name ?? DEFAULT_TEAM1_NAME
-  );
-  const [team2Name, setTeam2Name] = useState<string>(
-    savedState?.team2Name ?? DEFAULT_TEAM2_NAME
+  const [currentTeamIndex, setCurrentTeamIndex] = useState<number>(() =>
+    initCurrentTeamIndex(savedState)
   );
 
   // Quiz content (categories + questions) is now editable from the UI and
@@ -409,16 +442,11 @@ function App() {
   // Save state to localStorage whenever it changes
   useEffect(() => {
     saveState({
-      team1Score,
-      team2Score,
-      team1Series: Array.from(team1Series),
-      team2Series: Array.from(team2Series),
+      teams,
       answeredQuestions: Array.from(answeredQuestions),
-      currentTeam,
-      team1Name,
-      team2Name,
+      currentTeamIndex,
     });
-  }, [team1Score, team2Score, answeredQuestions, currentTeam, team1Name, team2Name]);
+  }, [teams, answeredQuestions, currentTeamIndex]);
 
   // Persist quiz content whenever categories or questions change.
   useEffect(() => {
@@ -475,18 +503,18 @@ function App() {
   };
 
   const switchTeam = () => {
-    setCurrentTeam((prev) => (prev === 'team1' ? 'team2' : 'team1'));
+    setCurrentTeamIndex((prev) => (prev + 1) % teams.length);
   };
 
   const handleQuestionClick = (question: Question) => {
     setSelectedQuestion(question);
   };
 
-  const countTrue = (arr: boolean[]) : number => {
-    let res = 0;
-    arr.forEach((val, _) => {if (val) { res += 1; }});
-    return res;
-  }
+  const handleTeamNameChange = (index: number, name: string) => {
+    setTeams((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, name } : t))
+    );
+  };
 
   const handleAnswerClick = (questionId: number, answerIndex: number, isCorrect: boolean) => {
     if (answeredQuestions.has(questionId)) {
@@ -494,58 +522,16 @@ function App() {
     }
     setAnsweredQuestions(new Set([...answeredQuestions, questionId]));
 
-    
-    // More complex scoring system based on sets and "penalty-like best of N rounds"
-    // The goal was to make game more balanced but it's not needed free play
-    
-    // let nextTeam1Series = [...team1Series];
-    // let nextTeam2Series = [...team2Series];
-    // if (currentTeam === 'team1') {
-    //   nextTeam1Series.push(isCorrect);
-    // } else {
-    //   nextTeam2Series.push(isCorrect);    
-    // }
-
-    // const answeredTotal = nextTeam1Series.length + nextTeam2Series.length;
-    // let nextBreak = 2 * SET_LENGTH;
-    // if (answeredTotal > 2 * SET_LENGTH) {
-    //   nextBreak = answeredTotal % 2 === 1 ? answeredTotal + 1 : answeredTotal;
-    // }
-    // nextBreak /= 2;
-    // const team1Left = nextBreak - nextTeam1Series.length;
-    // const team2Left = nextBreak - nextTeam2Series.length;
-
-  
-    // if (countTrue(nextTeam1Series) > countTrue(nextTeam2Series) + team2Left) {
-    //   setTeam1Score((prev) => prev + 1);
-    //   setTeam1Series([])
-    //   setTeam2Series([])
-    //   setCurrentTeam((prev) => ((team1Score + team2Score + 1) % 2 === 0 ? 'team1' : 'team2'));
-    //   return;
-    // }
-
-    // if (countTrue(nextTeam2Series) > countTrue(nextTeam1Series) + team1Left) {
-    //   setTeam2Score((prev) => prev + 1);
-    //   setTeam2Series([])
-    //   setTeam1Series([])
-    //   setCurrentTeam((prev) => ((team1Score + team2Score + 1) % 2 === 0 ? 'team1' : 'team2'));
-    //   return;
-    // }
-    // setTeam1Series(nextTeam1Series);
-    // setTeam2Series(nextTeam2Series);
-    
-   
-    // If you want to use a complex scoring system you need to comment this scoring part (without switching teams)
-    if (currentTeam === 'team1') {
-      if (isCorrect) {
-        setTeam1Score((prev) => prev + 1);
-      }
-    } else {
-      if (isCorrect) {
-        setTeam2Score((prev) => prev + 1);
-      }
+    // Award a point to the current team when the answer is correct, then pass
+    // the turn to the next team (cycles through all teams).
+    if (isCorrect) {
+      setTeams((prev) =>
+        prev.map((t, i) =>
+          i === currentTeamIndex ? { ...t, score: t.score + 1 } : t
+        )
+      );
     }
-    
+
     switchTeam();
   };
 
@@ -556,13 +542,11 @@ function App() {
   const handleResetGame = () => {
     if (window.confirm('Are you sure you want to reset the game? This will clear all scores and answered questions.')) {
       localStorage.removeItem(STORAGE_KEY);
-      setTeam1Score(0);
-      setTeam2Score(0);
+      // Keep team names, reset scores and series.
+      setTeams((prev) => prev.map((t) => ({ ...t, score: 0, series: [] })));
       setAnsweredQuestions(new Set());
-      setCurrentTeam('team1');
+      setCurrentTeamIndex(0);
       setSelectedQuestion(null);
-      setTeam1Series([]);
-      setTeam2Series([]);
     }
   };
 
@@ -573,18 +557,10 @@ function App() {
       </Typography>
       
       <Dashboard
-        team1Score={team1Score}
-        team2Score={team2Score}
-        onTeam1ScoreChange={(delta) => setTeam1Score(prev => Math.max(0, prev + delta))}
-        onTeam2ScoreChange={(delta) => setTeam2Score(prev => Math.max(0, prev + delta))}
-        team1Series={team1Series}
-        team2Series={team2Series}
-        currentTeam={currentTeam}
+        teams={teams}
+        currentTeamIndex={currentTeamIndex}
         onResetGame={handleResetGame}
-        team1Name={team1Name}
-        team2Name={team2Name}
-        onTeam1NameChange={setTeam1Name}
-        onTeam2NameChange={setTeam2Name}
+        onTeamNameChange={handleTeamNameChange}
       />
       
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4, mb: 1 }}>
@@ -612,7 +588,6 @@ function App() {
           onAnswerClick={handleAnswerClick}
           onClose={handleCloseQuestion}
           isAnswered={answeredQuestions.has(selectedQuestion.id)}
-          currentTeam={currentTeam}
         />
       )}
 

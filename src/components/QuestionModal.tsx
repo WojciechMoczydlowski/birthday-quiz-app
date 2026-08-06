@@ -16,7 +16,6 @@ interface QuestionModalProps {
   onAnswerClick: (questionId: number, answerIndex: number, isCorrect: boolean) => void;
   onClose: () => void;
   isAnswered: boolean;
-  currentTeam: 'team1' | 'team2';
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -24,7 +23,6 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   onAnswerClick,
   onClose,
   isAnswered,
-  currentTeam,
 }) => {
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
 

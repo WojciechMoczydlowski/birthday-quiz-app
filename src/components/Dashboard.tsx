@@ -1,101 +1,95 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, Grid, IconButton, ButtonGroup, Chip, Button, Stack, Avatar, TextField } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
+import { Box, Paper, Typography, Grid, IconButton, Chip, Button, Stack, Avatar, TextField } from '@mui/material';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
-import PenaltyShootout from './PenaltyTracker';
 import { green, red, grey } from '@mui/material/colors';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 
-interface DashboardProps {
-  team1Score: number;
-  team2Score: number;
-  onTeam1ScoreChange: (delta: number) => void;
-  onTeam2ScoreChange: (delta: number) => void;
-  team1Series: boolean[];
-  team2Series: boolean[];
-  currentTeam: 'team1' | 'team2';
-  onResetGame: () => void;
-  team1Name: string;
-  team2Name: string;
-  onTeam1NameChange: (name: string) => void;
-  onTeam2NameChange: (name: string) => void;
+interface TeamView {
+  name: string;
+  score: number;
+  series: boolean[];
 }
+
+interface DashboardProps {
+  teams: TeamView[];
+  currentTeamIndex: number;
+  onResetGame: () => void;
+  onTeamNameChange: (index: number, name: string) => void;
+}
+
+// Light card colors (with a matching dark text color) per team. Cycles if there
+// are more teams than palette entries. The active team is marked with an orange
+// border, so orange is intentionally avoided here.
+const teamColors = [
+  { bg: '#81d4fa', text: '#01579b' }, // light blue
+  { bg: '#a5d6a7', text: '#1b5e20' }, // light green
+  { bg: '#ce93d8', text: '#4a148c' }, // light purple
+  { bg: '#fff59d', text: '#f57f17' }, // light yellow
+  { bg: '#ef9a9a', text: '#b71c1c' }, // light red
+];
+
+const ACTIVE_BORDER = '#ff9800';
+
+const colorFor = (index: number) => teamColors[index % teamColors.length];
 
 type ShotStatus = 'goal' | 'miss' | null;
 
 const renderShotIcon = (status: ShotStatus, index: number) => {
-    let bgColor: string = grey[200];
-    let icon = <Typography variant="caption" color="text.secondary">{index + 1}</Typography>;
+  let bgColor: string = grey[200];
+  let icon = <Typography variant="caption" color="text.secondary">{index + 1}</Typography>;
 
-    if (status === 'goal') {
-      bgColor = green[600];
-      icon = <CheckIcon sx={{ fontSize: 18, color: 'white' }} />;
-    } else if (status === 'miss') {
-      bgColor = red[600];
-      icon = <CloseIcon sx={{ fontSize: 18, color: 'white' }} />;
-    }
+  if (status === 'goal') {
+    bgColor = green[600];
+    icon = <CheckIcon sx={{ fontSize: 18, color: 'white' }} />;
+  } else if (status === 'miss') {
+    bgColor = red[600];
+    icon = <CloseIcon sx={{ fontSize: 18, color: 'white' }} />;
+  }
 
-    return (
-      <Avatar
-        key={index}
-        sx={{
-          width: 36,
-          height: 36,
-          bgcolor: bgColor,
-          border: '1px solid',
-          borderColor: status ? 'transparent' : grey[400],
-          transition: 'all 0.3s ease',
-        }}
-      >
-        {icon}
-      </Avatar>
-    );
-  };
+  return (
+    <Avatar
+      key={index}
+      sx={{
+        width: 36,
+        height: 36,
+        bgcolor: bgColor,
+        border: '1px solid',
+        borderColor: status ? 'transparent' : grey[400],
+        transition: 'all 0.3s ease',
+      }}
+    >
+      {icon}
+    </Avatar>
+  );
+};
 
 const Dashboard: React.FC<DashboardProps> = ({
-  team1Score,
-  team2Score,
-  onTeam1ScoreChange,
-  onTeam2ScoreChange,
-  team1Series,
-  team2Series,
-  currentTeam,
+  teams,
+  currentTeamIndex,
   onResetGame,
-  team1Name,
-  team2Name,
-  onTeam1NameChange,
-  onTeam2NameChange,
+  onTeamNameChange,
 }) => {
-  const team1ShotStatuses = team1Series.map((value, _) => value === true ? 'goal' : 'miss');
-  const team2ShotStatuses = team2Series.map((value, _) => value === true ? 'goal' : 'miss');
-
-  const [editingTeam, setEditingTeam] = useState<'team1' | 'team2' | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draftName, setDraftName] = useState('');
 
-  const startEdit = (team: 'team1' | 'team2', currentName: string) => {
-    setEditingTeam(team);
+  const startEdit = (index: number, currentName: string) => {
+    setEditingIndex(index);
     setDraftName(currentName);
   };
 
-  const cancelEdit = () => setEditingTeam(null);
+  const cancelEdit = () => setEditingIndex(null);
 
-  const commitEdit = (onChange: (name: string) => void) => {
+  const commitEdit = (index: number) => {
     const trimmed = draftName.trim();
     if (trimmed) {
-      onChange(trimmed);
+      onTeamNameChange(index, trimmed);
     }
-    setEditingTeam(null);
+    setEditingIndex(null);
   };
 
-  const renderTeamName = (
-    team: 'team1' | 'team2',
-    name: string,
-    color: string,
-    onChange: (name: string) => void
-  ) => (
+  const renderTeamName = (index: number, name: string, color: string) => (
     <Box
       sx={{
         display: 'flex',
@@ -106,13 +100,13 @@ const Dashboard: React.FC<DashboardProps> = ({
         minHeight: 40,
       }}
     >
-      {editingTeam === team ? (
+      {editingIndex === index ? (
         <>
           <TextField
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitEdit(onChange);
+              if (e.key === 'Enter') commitEdit(index);
               if (e.key === 'Escape') cancelEdit();
             }}
             autoFocus
@@ -131,7 +125,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           />
           <IconButton
             size="small"
-            onClick={() => commitEdit(onChange)}
+            onClick={() => commitEdit(index)}
             sx={{ color }}
             aria-label="Zapisz nazwę drużyny"
           >
@@ -153,7 +147,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           </Typography>
           <IconButton
             size="small"
-            onClick={() => startEdit(team, name)}
+            onClick={() => startEdit(index, name)}
             sx={{ color }}
             aria-label="Edytuj nazwę drużyny"
           >
@@ -163,6 +157,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
     </Box>
   );
+
+  // Distribute the 12-column grid evenly across the teams (min 1 col wide).
+  const colSize = Math.max(1, Math.floor(12 / Math.max(1, teams.length)));
+  const activeColor = colorFor(currentTeamIndex);
+  const activeName = teams[currentTeamIndex]?.name ?? '';
 
   return (
     <Box>
@@ -177,94 +176,52 @@ const Dashboard: React.FC<DashboardProps> = ({
           Reset Game
         </Button>
       </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2}}>
-        <Chip 
-          label={`Pytanie dla: ${currentTeam !== 'team1' ? team2Name : team1Name}`} 
-          color="default" 
-          sx={{ 
-            backgroundColor: currentTeam === 'team1' ? '#81d4fa' : '#a5d6a7',
-            color: currentTeam === 'team1' ? '#01579b' : '#1b5e20',
-            border: '2px solid #ff9800',
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+        <Chip
+          label={`Pytanie dla: ${activeName}`}
+          color="default"
+          sx={{
+            backgroundColor: activeColor.bg,
+            color: activeColor.text,
+            border: `2px solid ${ACTIVE_BORDER}`,
             fontSize: '1rem',
             fontWeight: 600,
-          }} 
+          }}
         />
       </Box>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-      <Grid item xs={6}>
-        <Paper
-          elevation={3}
-          sx={{
-            p: 3,
-            textAlign: 'center',
-            backgroundColor: '#81d4fa',
-            color: '#01579b',
-            border: currentTeam === 'team1' ? '4px solid #ff9800' : '4px solid transparent',
-            boxShadow: currentTeam === 'team1' ? 6 : 3,
-          }}
-        >
-          {renderTeamName('team1', team1Name, '#01579b', onTeam1NameChange)}
-          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: '#01579b' }}>
-            {team1Score}
-          </Typography>
-          <Stack direction="row" spacing={1.5} justifyContent="center" alignItems="center">
-              {team1ShotStatuses.map((val, idx) => renderShotIcon(val, idx))}
-          </Stack>
-          {/* <ButtonGroup variant="contained" sx={{ backgroundColor: 'rgba(21, 101, 192, 0.2)' }}>
-            <IconButton
-              onClick={() => onTeam1ScoreChange(-1)}
-              sx={{ color: '#1565c0' }}
-              size="small"
-            >
-              <RemoveIcon />
-            </IconButton>
-            <IconButton
-              onClick={() => onTeam1ScoreChange(1)}
-              sx={{ color: '#1565c0' }}
-              size="small"
-            >
-              <AddIcon />
-            </IconButton>
-          </ButtonGroup> */}
-        </Paper>
-      </Grid>
-      <Grid item xs={6}>
-        <Paper
-          elevation={3}
-          sx={{
-            p: 3,
-            textAlign: 'center',
-            backgroundColor: '#a5d6a7',
-            color: '#1b5e20',
-            border: currentTeam === 'team2' ? '4px solid #ff9800' : '4px solid transparent',
-            boxShadow: currentTeam === 'team2' ? 6 : 3,
-          }}
-        >
-          {renderTeamName('team2', team2Name, '#1b5e20', onTeam2NameChange)}
-          <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: '#1b5e20' }}>
-            {team2Score}
-          </Typography>
-          <Stack direction="row" spacing={1.5} justifyContent="center" alignItems="center">
-              {team2ShotStatuses.map((val, idx) => renderShotIcon(val, idx))}
-          </Stack>
-          {/* <ButtonGroup variant="contained" sx={{ backgroundColor: 'rgba(198, 40, 40, 0.2)' }}>
-            <IconButton
-              onClick={() => onTeam2ScoreChange(-1)}
-              sx={{ color: '#c62828' }}
-              size="small"
-            >
-              <RemoveIcon />
-            </IconButton>
-            <IconButton
-              onClick={() => onTeam2ScoreChange(1)}
-              sx={{ color: '#c62828' }}
-              size="small"
-            >
-              <AddIcon />
-            </IconButton>
-          </ButtonGroup> */}
-        </Paper>
-      </Grid>
+      <Grid container spacing={3} sx={{ mb: 4 }} justifyContent="center">
+        {teams.map((team, index) => {
+          const colors = colorFor(index);
+          const isActive = index === currentTeamIndex;
+          const shotStatuses: ShotStatus[] = team.series.map((v) =>
+            v === true ? 'goal' : 'miss'
+          );
+          return (
+            <Grid item xs={12} sm={colSize} key={index}>
+              <Paper
+                elevation={3}
+                sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  backgroundColor: colors.bg,
+                  color: colors.text,
+                  border: isActive
+                    ? `4px solid ${ACTIVE_BORDER}`
+                    : '4px solid transparent',
+                  boxShadow: isActive ? 6 : 3,
+                }}
+              >
+                {renderTeamName(index, team.name, colors.text)}
+                <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: colors.text }}>
+                  {team.score}
+                </Typography>
+                <Stack direction="row" spacing={1.5} justifyContent="center" alignItems="center">
+                  {shotStatuses.map((val, idx) => renderShotIcon(val, idx))}
+                </Stack>
+              </Paper>
+            </Grid>
+          );
+        })}
       </Grid>
     </Box>
   );
