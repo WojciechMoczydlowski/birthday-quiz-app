@@ -35,5 +35,13 @@ module.exports = {
     compress: true,
     host: '0.0.0.0',
     port: 8080,
+    // Crucial: Allows external hostnames/URLs to bypass host checking
+    allowedHosts: 'all', 
+    
+    // Enables client-side routing (React Router, Vue Router, etc.)
+    historyApiFallback: true, 
+    
+    // Enables gzip compression for served assets
+    compress: true,
   },
 };
