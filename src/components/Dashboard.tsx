@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Paper, Typography, Grid, IconButton, Chip, Button, Stack, Avatar, TextField } from '@mui/material';
-import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import { Box, Paper, Typography, Grid, IconButton, Chip, Stack, Avatar, TextField } from '@mui/material';
 import { green, red, grey } from '@mui/material/colors';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
@@ -15,8 +14,9 @@ interface TeamView {
 interface DashboardProps {
   teams: TeamView[];
   currentTeamIndex: number;
-  onResetGame: () => void;
   onTeamNameChange: (index: number, name: string) => void;
+  // 'vertical' renders compact cards stacked for a fixed sidebar; 'horizontal' is the original row layout.
+  orientation?: 'horizontal' | 'vertical';
 }
 
 // Light card colors (with a matching dark text color) per team. Cycles if there
@@ -68,8 +68,8 @@ const renderShotIcon = (status: ShotStatus, index: number) => {
 const Dashboard: React.FC<DashboardProps> = ({
   teams,
   currentTeamIndex,
-  onResetGame,
   onTeamNameChange,
+  orientation = 'horizontal',
 }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -89,6 +89,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     setEditingIndex(null);
   };
 
+  const isVertical = orientation === 'vertical';
+
   const renderTeamName = (index: number, name: string, color: string) => (
     <Box
       sx={{
@@ -97,7 +99,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         alignItems: 'center',
         gap: 0.5,
         mb: 1,
-        minHeight: 40,
+        minHeight: isVertical ? 32 : 40,
+        flexWrap: 'wrap',
       }}
     >
       {editingIndex === index ? (
@@ -117,7 +120,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 color,
                 fontWeight: 'bold',
                 textAlign: 'center',
-                fontSize: '1.5rem',
+                fontSize: isVertical ? '1.1rem' : '1.5rem',
               },
               '& .MuiInput-underline:before': { borderBottomColor: color },
               '& .MuiInput-underline:after': { borderBottomColor: color },
@@ -142,7 +145,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </>
       ) : (
         <>
-          <Typography variant="h5" sx={{ color, fontWeight: 'bold' }}>
+          <Typography variant={isVertical ? 'subtitle1' : 'h5'} sx={{ color, fontWeight: 'bold' }}>
             {name}
           </Typography>
           <IconButton
@@ -163,20 +166,52 @@ const Dashboard: React.FC<DashboardProps> = ({
   const activeColor = colorFor(currentTeamIndex);
   const activeName = teams[currentTeamIndex]?.name ?? '';
 
+  const renderTeamCard = (team: TeamView, index: number) => {
+    const colors = colorFor(index);
+    const isActive = index === currentTeamIndex;
+    const shotStatuses: ShotStatus[] = team.series.map((v) =>
+      v === true ? 'goal' : 'miss'
+    );
+    return (
+      <Paper
+        key={index}
+        elevation={3}
+        sx={{
+          p: isVertical ? 2 : 3,
+          textAlign: 'center',
+          backgroundColor: colors.bg,
+          color: colors.text,
+          border: isActive
+            ? `4px solid ${ACTIVE_BORDER}`
+            : '4px solid transparent',
+          boxShadow: isActive ? 6 : 3,
+        }}
+      >
+        {renderTeamName(index, team.name, colors.text)}
+        <Typography
+          variant={isVertical ? 'h3' : 'h2'}
+          fontWeight="bold"
+          sx={{ mb: 2, color: colors.text }}
+        >
+          {team.score}
+        </Typography>
+        <Stack
+          direction="row"
+          flexWrap="wrap"
+          spacing={1}
+          rowGap={1}
+          justifyContent="center"
+          alignItems="center"
+        >
+          {shotStatuses.map((val, idx) => renderShotIcon(val, idx))}
+        </Stack>
+      </Paper>
+    );
+  };
+
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<RestartAltIcon />}
-          onClick={onResetGame}
-          size="small"
-        >
-          Reset Game
-        </Button>
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
         <Chip
           label={`Pytanie dla: ${activeName}`}
           color="default"
@@ -189,40 +224,19 @@ const Dashboard: React.FC<DashboardProps> = ({
           }}
         />
       </Box>
-      <Grid container spacing={3} sx={{ mb: 4 }} justifyContent="center">
-        {teams.map((team, index) => {
-          const colors = colorFor(index);
-          const isActive = index === currentTeamIndex;
-          const shotStatuses: ShotStatus[] = team.series.map((v) =>
-            v === true ? 'goal' : 'miss'
-          );
-          return (
+      {isVertical ? (
+        <Stack spacing={2}>
+          {teams.map((team, index) => renderTeamCard(team, index))}
+        </Stack>
+      ) : (
+        <Grid container spacing={3} justifyContent="center">
+          {teams.map((team, index) => (
             <Grid item xs={12} sm={colSize} key={index}>
-              <Paper
-                elevation={3}
-                sx={{
-                  p: 3,
-                  textAlign: 'center',
-                  backgroundColor: colors.bg,
-                  color: colors.text,
-                  border: isActive
-                    ? `4px solid ${ACTIVE_BORDER}`
-                    : '4px solid transparent',
-                  boxShadow: isActive ? 6 : 3,
-                }}
-              >
-                {renderTeamName(index, team.name, colors.text)}
-                <Typography variant="h2" fontWeight="bold" sx={{ mb: 2, color: colors.text }}>
-                  {team.score}
-                </Typography>
-                <Stack direction="row" spacing={1.5} justifyContent="center" alignItems="center">
-                  {shotStatuses.map((val, idx) => renderShotIcon(val, idx))}
-                </Stack>
-              </Paper>
+              {renderTeamCard(team, index)}
             </Grid>
-          );
-        })}
-      </Grid>
+          ))}
+        </Grid>
+      )}
     </Box>
   );
 };
