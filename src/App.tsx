@@ -12,6 +12,7 @@ import {
 import SettingsIcon from '@mui/icons-material/Settings';
 import EditIcon from '@mui/icons-material/Edit';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import UndoIcon from '@mui/icons-material/Undo';
 import Dashboard from './components/Dashboard';
 import QuestionList from './components/QuestionList';
 import QuestionModal from './components/QuestionModal';
@@ -34,10 +35,14 @@ export interface TeamState {
   series: boolean[];
 }
 
-interface SavedState {
+interface GameSnapshot {
   teams: TeamState[];
   answeredQuestions: number[];
   currentTeamIndex: number;
+}
+
+interface SavedState extends GameSnapshot {
+  history: GameSnapshot[];
 }
 
 const makeDefaultTeams = (): TeamState[] =>
@@ -46,6 +51,37 @@ const makeDefaultTeams = (): TeamState[] =>
     score: 0,
     series: [],
   }));
+
+const cloneTeams = (teams: TeamState[]): TeamState[] =>
+  teams.map((team) => ({ ...team, series: [...team.series] }));
+
+const createGameSnapshot = (
+  teams: TeamState[],
+  answeredQuestions: Set<number>,
+  currentTeamIndex: number
+): GameSnapshot => ({
+  teams: cloneTeams(teams),
+  answeredQuestions: Array.from(answeredQuestions),
+  currentTeamIndex,
+});
+
+const isGameSnapshot = (value: any): value is GameSnapshot =>
+  Boolean(value) &&
+  Array.isArray(value.teams) &&
+  Array.isArray(value.answeredQuestions) &&
+  typeof value.currentTeamIndex === 'number';
+
+const initHistory = (saved: any): GameSnapshot[] => {
+  if (!Array.isArray(saved?.history)) return [];
+
+  return saved.history
+    .filter(isGameSnapshot)
+    .map((snapshot: GameSnapshot) => ({
+      teams: cloneTeams(snapshot.teams),
+      answeredQuestions: [...snapshot.answeredQuestions],
+      currentTeamIndex: snapshot.currentTeamIndex,
+    }));
+};
 
 const loadState = (): any => {
   try {
@@ -177,6 +213,9 @@ function App() {
   const [currentTeamIndex, setCurrentTeamIndex] = useState<number>(() =>
     initCurrentTeamIndex(savedState)
   );
+  const [gameHistory, setGameHistory] = useState<GameSnapshot[]>(() =>
+    initHistory(savedState)
+  );
 
   // Quiz content (categories + questions) is now editable from the UI and
   // persisted separately from the game state.
@@ -192,8 +231,9 @@ function App() {
       teams,
       answeredQuestions: Array.from(answeredQuestions),
       currentTeamIndex,
+      history: gameHistory,
     });
-  }, [teams, answeredQuestions, currentTeamIndex]);
+  }, [teams, answeredQuestions, currentTeamIndex, gameHistory]);
 
   // Persist quiz content whenever categories or questions change.
   useEffect(() => {
@@ -267,7 +307,12 @@ function App() {
     if (answeredQuestions.has(questionId)) {
       return; // Already answered
     }
-    setAnsweredQuestions(new Set([...answeredQuestions, questionId]));
+
+    setGameHistory((prev) => [
+      ...prev,
+      createGameSnapshot(teams, answeredQuestions, currentTeamIndex),
+    ]);
+    setAnsweredQuestions((prev) => new Set([...prev, questionId]));
 
     // Award a point to the current team when the answer is correct, then pass
     // the turn to the next team (cycles through all teams).
@@ -286,6 +331,22 @@ function App() {
     setSelectedQuestion(null);
   };
 
+  const handleUndo = () => {
+    const previousState = gameHistory[gameHistory.length - 1];
+    if (!previousState) return;
+
+    setTeams(cloneTeams(previousState.teams));
+    setAnsweredQuestions(new Set(previousState.answeredQuestions));
+    setCurrentTeamIndex(
+      Math.min(
+        Math.max(0, previousState.currentTeamIndex),
+        Math.max(0, teams.length - 1)
+      )
+    );
+    setGameHistory(gameHistory.slice(0, -1));
+    setSelectedQuestion(null);
+  };
+
   const handleResetGame = () => {
     if (window.confirm('Are you sure you want to reset the game? This will clear all scores and answered questions.')) {
       localStorage.removeItem(STORAGE_KEY);
@@ -293,6 +354,7 @@ function App() {
       setTeams((prev) => prev.map((t) => ({ ...t, score: 0, series: [] })));
       setAnsweredQuestions(new Set());
       setCurrentTeamIndex(0);
+      setGameHistory([]);
       setSelectedQuestion(null);
     }
   };
@@ -320,6 +382,18 @@ function App() {
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
+          <MenuItem
+            disabled={gameHistory.length === 0}
+            onClick={() => {
+              setSettingsAnchor(null);
+              handleUndo();
+            }}
+          >
+            <ListItemIcon>
+              <UndoIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Cofnij ostatni krok</ListItemText>
+          </MenuItem>
           <MenuItem
             onClick={() => {
               setSettingsAnchor(null);
