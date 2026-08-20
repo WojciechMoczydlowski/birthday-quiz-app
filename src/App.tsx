@@ -26,7 +26,7 @@ const CONTENT_KEY = 'quiz-manager-content';
 const NUM_TEAMS = 3;
 
 // Default team names, used the first time the app runs (each is editable in UI).
-const DEFAULT_TEAM_NAMES = ['Team Kasia', 'Team Ewela', 'Team 3'];
+const DEFAULT_TEAM_NAMES = ['Team 1', 'Team 2', 'Team 3'];
 
 export interface TeamState {
   name: string;
@@ -106,10 +106,6 @@ const saveState = (state: SavedState) => {
 // categories and questions live in localStorage and are managed from the UI.
 const defaultCategories = [
   'Pytania ogólne',
-  'Kobiety i związki',
-  'Nauka, studia, praca',
-  'Studnia',
-  'Pytania Combo',
 ];
 
 const defaultQuestions: Question[] = [
